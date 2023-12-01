@@ -1,8 +1,17 @@
+from tkinter import filedialog
+
 import cv2
 import imutils
 import numpy as np
 from imutils import contours
 from tkinter import *
+from datetime import datetime
+import os
+
+# Caminho padrão do diretório de salvamento dos arquivos
+DEFAULT_SAVING_DIRECTORY = "/home/sitech/Documents/teste_predic/"
+
+sample_tag = "452156267"
 
 def impurity_detection(image_path):
     global img
@@ -61,7 +70,7 @@ def impurity_detection(image_path):
         # crop left and right borders, top and bottom borders
         new_img = img[BORDER_TOP[0]:BORDER_BOTTOM[0], BORDER_LEFT[1]:BORDER_RIGHT[1]]
 
-        cv2.imshow("Imagem cortada", new_img)
+        #cv2.imshow("Imagem cortada", new_img)
         return new_img
 
         # Leitura da imagem com a função imread()
@@ -82,7 +91,7 @@ def impurity_detection(image_path):
     imgHeight = img.shape[0]  # altura da imagem
 
     # Mostra a imagem com a função imshow
-    cv2.imshow("Imagem original", img)
+    #cv2.imshow("Imagem original", img)
 
     img = crop_image()
 
@@ -91,7 +100,7 @@ def impurity_detection(image_path):
     (cX, cY) = (img.shape[1] // 2, img.shape[0] // 2)
     cv2.circle(mascara, (cX, cY), 100, 255, -1)
     img = cv2.bitwise_and(img, img, mask=mascara)
-    cv2.imshow("Mascara aplicada a imagem", img)
+    #cv2.imshow("Mascara aplicada a imagem", img)
 
     # Convert from RGB to grayscale
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -101,13 +110,16 @@ def impurity_detection(image_path):
     bin1 = cv2.adaptiveThreshold(suave, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 21, 5)
     # Aplly Canny border detection algorithim
     canny1 = cv2.Canny(bin1, 20, 120)
-
+    ############ SHOW CANNY1 ON GUI ########################
+    save_file(sample_tag, img, canny1)
+    """
     # Show results
     resultado = np.vstack([
         np.hstack([img, suave]),
         np.hstack([bin1, canny1])
     ])
-    cv2.imshow("Binarizacao da imagem", resultado)
+    cv2.imshow("Binarizacao da imagem", resultado)  
+    """
 
     # Find contours on Canny's result image
     canny1 = cv2.dilate(canny1, None, iterations=1)
@@ -154,8 +166,58 @@ window.title('Análise de Amostras')
 window.geometry('645x400')
 window.minsize(645, 400)
 
+# Gera o nome do arquivo de imagem tag_timestamp.png
+def get_new_filename(tag):
+    # Get current datetime
+    current_timestamp = datetime.now();
+    formatted_timestamp = current_timestamp.strftime("%Y-%m-%d_%H.%M.%S")
+
+    # Get filename as tag_timestamp.png
+    filename = tag + '_' + formatted_timestamp + '.png'
+    return filename
+
+def save_file(tag, img, canny1):
+    # Creates new folder inside DEFAULT_SAVING_DIRECTORY with the same name as the sample's tag
+    dir_path = make_sample_dir(tag)
+
+    # Save original image
+    orig_filename = get_new_filename("orig_" + str(tag))
+    orig_filepath = dir_path + str(orig_filename)
+    cv2.imwrite(orig_filepath, img)
+
+    # Save image with canny contour method applied
+    canny_filename = get_new_filename("canny_" + str(tag))
+    canny_filepath = dir_path + canny_filename
+    cv2.imwrite(canny_filepath, canny1)
+
+
+
+# Creates a new folder inside DEFAULT_SAVING_DIRECTORY with the same name as the sample's tag
+def make_sample_dir(tag, i=0):
+    if (i==0):
+        new_directory_path = DEFAULT_SAVING_DIRECTORY + tag + '/'
+    else:
+        new_directory_path = DEFAULT_SAVING_DIRECTORY + tag + ' (' + str(i) + ')/'
+
+    if os.path.exists(new_directory_path):
+        return make_sample_dir(tag, i+1)
+    else:
+        os.makedirs(new_directory_path)
+        return new_directory_path
+
+# Opens a file dialog so the user can select the file path where image files will be stored
+def open_file_dialog():
+    # Hide the main window
+    window.withdraw()
+
+    # Opens a file dialog to select a folder
+    file_path = filedialog.askdirectory(title="Selecione a pasta")
+    return file_path
+
+
+
 # Nome da imagem = TAG + TimeStamp
-name = Label(window, text='tag_timestamp.format', font=("Helvetica", 16))
+name = Label(window, text='tag_timestamp.png', font=("Helvetica", 16))
 name.grid(column=0, row=0, columnspan=3)
 
 # Resultado da análise ("Amostra Contaminada" / "Amostra Livre de Impureza")
