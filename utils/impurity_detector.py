@@ -3,12 +3,15 @@ import imutils
 import numpy as np
 from imutils import contours
 
+from utils.file_management import FileManagement
 
 class ImpurityDetector:
 
-    def search_for_impurity(self, image_path):
+    def __init__(self):
+        self.file_management = FileManagement()
+    def search_for_impurity(self, dir_path, tag, src_image_path):
 
-        img = cv2.imread(image_path)
+        img = cv2.imread(src_image_path)
         img = img[::2, ::2]
 
         imgWidth = img.shape[1]   # largura da imagem
@@ -30,6 +33,10 @@ class ImpurityDetector:
         bin1 = cv2.adaptiveThreshold(suave, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 21, 5)
         # Aplly Canny border detection algorithim
         canny1 = cv2.Canny(bin1, 20, 120)
+
+        # Saves result image to image file
+        self.save_result_image(img, dir_path, tag)
+
         canny1 = cv2.dilate(canny1, None, iterations=1)
         canny1 = cv2.erode(canny1, None, iterations=1)
 
@@ -56,9 +63,9 @@ class ImpurityDetector:
 
 
         if len(storeArea) > 4:
-            return [1, img]
+            return True
         else:
-            return [0, img]
+            return False
 
 
     def crop_image(self, img):
@@ -117,6 +124,12 @@ class ImpurityDetector:
 
         return new_img
 
+    def save_result_image(self, img, dir_path, tag):
 
+        image_filename = "canny_" + self.file_management.get_image_filename(tag)
+
+        image_path = dir_path + image_filename
+
+        cv2.imwrite(image_path, img)
 
 

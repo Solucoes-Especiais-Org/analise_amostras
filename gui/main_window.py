@@ -4,6 +4,7 @@ from datetime import datetime
 
 import cv2
 
+from utils.file_management import FileManagement
 from utils.impurity_detector import ImpurityDetector
 from utils.qr_code_reader import QRCodeReader
 from gui.webcam_window import WebcamWindow
@@ -21,6 +22,9 @@ class MainWindow:
         self.root.title("Análise de Amostras")
         root.geometry('645x400')
         root.minsize(645, 400)
+
+        self.file_management = FileManagement();
+        self.impurity_detector = ImpurityDetector();
 
         # Create a canvas to display the webcam stream
         #self.canvas = tk.Canvas(root)
@@ -96,10 +100,15 @@ class MainWindow:
         resultLabel = tk.Label(root, text='', font=("Helvetica", 16))
         resultLabel.grid(column=0, row=3, columnspan=3)
 
+        sample_dir = self.file_management.make_sample_dir(sample_tag)
+
+        src_image_path = self.webcam_window.capture_frame(sample_dir, sample_tag)
+
         #self.save_image()
 
-        """
-        [result, result_img] = self.impurity_detector.search_for_impurity("resources/samples/predic/318-0382.jpg")
+        #self.webcam_window.capture_frame()
+
+        result = self.impurity_detector.search_for_impurity(sample_dir, sample_tag, src_image_path)
 
         if (result):
             resultLabel.config(text="Amostra contaminada")
@@ -107,63 +116,4 @@ class MainWindow:
             resultLabel.config(text="Amostra livre de impureza")
 
         #self.save_image(result_img)
-        """
 
-    def make_sample_dir(self, tag, i=0):
-        if (i==0):
-            new_directory_path = DEFAULT_SAVING_DIRECTORY + tag + '/'
-        else:
-            new_directory_path = DEFAULT_SAVING_DIRECTORY + tag + ' (' + str(i) + ')/'
-
-        if os.path.exists(new_directory_path):
-            return self.make_sample_dir(tag, i+1)
-        else:
-            os.makedirs(new_directory_path)
-            return new_directory_path
-
-    # Gera o nome do arquivo de imagem tag_timestamp.png
-    def get_new_filename(tag):
-        # Get current datetime
-        current_timestamp = datetime.now();
-        formatted_timestamp = current_timestamp.strftime("%Y-%m-%d_%H.%M.%S")
-
-        # Get filename as tag_timestamp.png
-        filename = tag + '_' + formatted_timestamp + '.png'
-        return filename
-
-    """
-    def save_image(self, tag, img, canny1):
-        # Creates new folder inside DEFAULT_SAVING_DIRECTORY with the same name as the sample's tag
-        dir_path = self.make_sample_dir(tag)
-
-        # Save original image
-        orig_filename = self.get_new_filename(str(tag) + "orig_" )
-        orig_filepath = dir_path + str(orig_filename)
-        cv2.imwrite(orig_filepath, img)
-
-        # Save image with canny contour method applied
-        canny_filename = self.get_new_filename(str(tag) + "canny_")
-        canny_filepath = dir_path + canny_filename
-        cv2.imwrite(canny_filepath, canny1)    
-    """
-
-    def save_image(self, tag, img, canny1):
-        # Creates new folder inside DEFAULT_SAVING_DIRECTORY with the same name as the sample's tag
-        dir_path = self.make_sample_dir(tag)
-
-        # Save original image
-        file_name = self.get_new_filename(tag)
-        file_path = dir_path + str(file_name)
-        cv2.imwrite(file_path, img)
-
-        return file_path
-
-
-    # Opens a file dialog so the user can select the file path where image files will be stored
-    def open_file_dialog(self, master):
-        # Hide the main window
-        master.withdraw()
-
-        # Opens a file dialog to select a folder
-        file_path = tk.filedialog.askdirectory(title="Selecione a pasta")
-        return file_path

@@ -5,7 +5,7 @@ class QRCodeReader:
 	window_name = 'OpenCV QR Code'
 
 	def __init__(self):
-		self.camera_id = 0
+		self.camera_id = 1
 		self.delay = 1
 		self.qcd = cv2.QRCodeDetector()
 		self.cap = cv2.VideoCapture(self.camera_id)
