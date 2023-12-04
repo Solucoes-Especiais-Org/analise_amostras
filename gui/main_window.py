@@ -1,5 +1,4 @@
-from tkinter import *
-from tkinter import filedialog
+import tkinter as tk
 import os
 from datetime import datetime
 
@@ -7,6 +6,7 @@ import cv2
 
 from utils.impurity_detector import ImpurityDetector
 from utils.qr_code_reader import QRCodeReader
+from gui.webcam_window import WebcamWindow
 
 # Caminho padrão do diretório de salvamento dos arquivos
 DEFAULT_SAVING_DIRECTORY = "/home/sitech/Documents/teste_predic/"
@@ -14,43 +14,39 @@ DEFAULT_SAVING_DIRECTORY = "/home/sitech/Documents/teste_predic/"
 sample_tag = "452156267"
 resource_path = "resources/samples/predic/318-0613.jpg"
 
+# Example usage in another application
 class MainWindow:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Análise de Amostras")
+        root.geometry('645x400')
+        root.minsize(645, 400)
 
-    def __init__(self, master, video_source):
-        self.master = master
-        master.title("Análise de Amostras")
-        master.geometry('645x400')
-        master.minsize(645, 400)
+        # Create a canvas to display the webcam stream
+        #self.canvas = tk.Canvas(root)
+        #self.canvas.pack()
 
-        self.qr_code_reader = QRCodeReader()
-        self.impurity_detector = ImpurityDetector()
+         # Campo de exibição 1 - Máscara aplicada
+        self.image_canvas1 = tk.Canvas(root, width=300, height=300, borderwidth=2, relief="solid")
+        self.image_canvas1.grid(column=0, row=1, sticky="nsew")
 
-        self.vid = cv2.VideoCapture(video_source)
-
-        # Nome da imagem = TAG + TimeStamp
-        name = Label(master, text='tag_timestamp.png', font=("Helvetica", 16))
-        name.grid(column=0, row=0, columnspan=3)
-
-        # Resultado da análise ("Amostra Contaminada" / "Amostra Livre de Impureza")
-        #result = Label(master, text='', font=("Helvetica", 16))
-        #result.grid(column=0, row=3, columnspan=3)
-
-        # Campo de exibição 1 - Máscara aplicada
-        image_canvas1 = Canvas(master, width=300, height=300, borderwidth=2, relief="solid")
-        image_canvas1.grid(column=0, row=1, sticky="nsew")
+        # Create an instance of WebcamApp and pass the canvas as a parameter
+        self.webcam_window = WebcamWindow(self.image_canvas1, video_source=0)
 
         # Campo de exibição 2 - Binarização da imagem
-        image_canvas2 = Canvas(master, width=300, height=300, borderwidth=2, relief="solid")
+        image_canvas2 = tk.Canvas(root, width=300, height=300, borderwidth=2, relief="solid")
         image_canvas2.grid(column=2, row=1, sticky="nsew")
 
-        # Inicia o processo
-        start_button = Button(master, text="START", width=10, command=self.start_process(master), background="#f8f4f4")
+        # Add other widgets or functionality to your application as needed
+        # ...
+         # Inicia o processo
+        start_button = tk.Button(root, text="START", width=10, command=self.start_process(root), background="#f8f4f4")
         start_button.grid(column=0, row=4)
 
         # Encerra o processo
-        stop_button = Button(master, text='STOP', width=10, background="#f8f4f4")
+        stop_button = tk.Button(root, text='STOP', width=10, background="#f8f4f4")
         stop_button.grid(column=2, row=4)
-        stop_button.configure(state=DISABLED)
+        stop_button.configure(state=tk.DISABLED)
 
         # Função para configurar o cursor ao passar o mouse sobre o botão START
         def on_enter_start(event):
@@ -80,19 +76,29 @@ class MainWindow:
         stop_button.bind("<Leave>", on_leave_stop)
 
         # Configuração para manter os tamanhos
-        master.columnconfigure(0, weight=1, minsize=300)
-        master.columnconfigure(2, weight=1, minsize=300)
-        master.rowconfigure(1, weight=1, minsize=300)
-        master.rowconfigure(4, weight=1)
-    
+        root.columnconfigure(0, weight=1, minsize=300)
+        root.columnconfigure(2, weight=1, minsize=300)
+        root.rowconfigure(1, weight=1, minsize=300)
+        root.rowconfigure(4, weight=1)
 
-    def start_process(self, master):
+        # Set up the window closing event
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        # Perform any cleanup tasks and close the application
+        # For example, you might stop other threads or processes
+        self.webcam_window.stop_video()
+        self.root.destroy()
+
+
+    def start_process(self, root):
         # Resultado da análise ("Amostra Contaminada" / "Amostra Livre de Impureza")
-        resultLabel = Label(master, text='', font=("Helvetica", 16))
+        resultLabel = tk.Label(root, text='', font=("Helvetica", 16))
         resultLabel.grid(column=0, row=3, columnspan=3)
 
-        self.save_image()
+        #self.save_image()
 
+        """
         [result, result_img] = self.impurity_detector.search_for_impurity("resources/samples/predic/318-0382.jpg")
 
         if (result):
@@ -100,10 +106,9 @@ class MainWindow:
         else:
             resultLabel.config(text="Amostra livre de impureza")
 
-        self.save_image(result_img)
+        #self.save_image(result_img)
+        """
 
-
-    # Creates a new folder inside DEFAULT_SAVING_DIRECTORY with the same name as the sample's tag
     def make_sample_dir(self, tag, i=0):
         if (i==0):
             new_directory_path = DEFAULT_SAVING_DIRECTORY + tag + '/'
@@ -155,11 +160,10 @@ class MainWindow:
 
 
     # Opens a file dialog so the user can select the file path where image files will be stored
-    def open_file_dialog():
+    def open_file_dialog(self, master):
         # Hide the main window
         master.withdraw()
 
         # Opens a file dialog to select a folder
-        file_path = filedialog.askdirectory(title="Selecione a pasta")
+        file_path = tk.filedialog.askdirectory(title="Selecione a pasta")
         return file_path
-
