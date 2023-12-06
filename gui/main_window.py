@@ -21,78 +21,114 @@ class MainWindow:
         self.root = root
         self.root.title("Análise de Amostras")
         root.geometry('645x400')
-        root.minsize(645, 400)
+        root.minsize(1280, 640)
 
         self.file_management = FileManagement();
         self.impurity_detector = ImpurityDetector();
+        # self.qr_code_reader = QRCodeReader()
 
-        # Create a canvas to display the webcam stream
-        #self.canvas = tk.Canvas(root)
-        #self.canvas.pack()
+        self.init_ui(self.root)
 
-         # Campo de exibição 1 - Máscara aplicada
-        self.image_canvas1 = tk.Canvas(root, width=300, height=300, borderwidth=2, relief="solid")
-        self.image_canvas1.grid(column=0, row=1, sticky="nsew")
+    def init_ui(self, root):
+        """
+        Initialize the user interface for the main application window.
 
-        # Create an instance of WebcamApp and pass the canvas as a parameter
-        self.webcam_window = WebcamWindow(self.image_canvas1, video_source=0)
+        This function sets up the UI components including canvases for webcam stream and result image,
+        START and STOP buttons, and configures column and row sizes.
 
-        # Campo de exibição 2 - Binarização da imagem
-        image_canvas2 = tk.Canvas(root, width=300, height=300, borderwidth=2, relief="solid")
-        image_canvas2.grid(column=2, row=1, sticky="nsew")
+        Additionally, it establishes the event handler for the window closing event.
 
-        # Add other widgets or functionality to your application as needed
-        # ...
-         # Inicia o processo
-        start_button = tk.Button(root, text="START", width=10, command=self.start_process(root), background="#f8f4f4")
+        Parameters:
+            root (tk.Tk): The Tkinter root window.
+
+        Returns:
+            None
+        """
+
+        # Create a canvas for webcam stream
+        webcam_canvas = self.create_image_canvas(root, column=0, row=1, sticky="nsew")
+
+        # Create an instance of WebcamWindow and pass the canvas as a parameter
+        self.webcam_window = WebcamWindow(webcam_canvas, video_source=0)
+
+        # Create a canvas for the result image
+        result_image_canvas = self.create_image_canvas(root, column=2, row=1, sticky="nsew")
+
+        # Create and configure START button
+        start_button = tk.Button(root, text="START", width=10, command=self.start_process, background="#f8f4f4")
         start_button.grid(column=0, row=4)
+        self.configure_button_hover(start_button)
 
-        # Encerra o processo
-        stop_button = tk.Button(root, text='STOP', width=10, background="#f8f4f4")
+        # Create and configure STOP button
+        stop_button = tk.Button(root, text='STOP', width=10, background="#f8f4f4", state=tk.DISABLED)
         stop_button.grid(column=2, row=4)
-        stop_button.configure(state=tk.DISABLED)
+        self.configure_button_hover(stop_button)
 
-        # Função para configurar o cursor ao passar o mouse sobre o botão START
-        def on_enter_start(event):
-            start_button.config(cursor="hand2")
-            start_button.config(background="#dddddd")
-
-        # Função para configurar o cursor ao retirar o mouse do botão START
-        def on_leave_start(event):
-            start_button.config(cursor="")
-            start_button.config(background="#f8f4f4")
-
-        # Função para configurar o cursor ao passar o mouse sobre o botão STOP
-        def on_enter_stop(event):
-            stop_button.config(cursor="hand2")
-            stop_button.config(background="#dddddd")
-
-        # Função para configurar o cursor ao retirar o mouse do botão STOP
-        def on_leave_stop(event):
-            stop_button.config(cursor="")
-            stop_button.config(background="#f8f4f4")
-
-        # Associa os eventos de passagem do mouse às funções correspondentes
-        start_button.bind("<Enter>", on_enter_start)
-        start_button.bind("<Leave>", on_leave_start)
-
-        stop_button.bind("<Enter>", on_enter_stop)
-        stop_button.bind("<Leave>", on_leave_stop)
-
-        # Configuração para manter os tamanhos
-        root.columnconfigure(0, weight=1, minsize=300)
-        root.columnconfigure(2, weight=1, minsize=300)
-        root.rowconfigure(1, weight=1, minsize=300)
-        root.rowconfigure(4, weight=1)
+        # Configure column and row sizes
+        self.root.columnconfigure(0, weight=1)
+        self.root.columnconfigure(2, weight=1)
+        self.root.rowconfigure(1, weight=1)
+        self.root.rowconfigure(4, weight=1)
 
         # Set up the window closing event
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-    def on_closing(self):
-        # Perform any cleanup tasks and close the application
-        # For example, you might stop other threads or processes
-        self.webcam_window.stop_video()
-        self.root.destroy()
+
+    def create_image_canvas(self, root, column, row, sticky):
+        """
+        Creates a Tkinter Canvas widget for displaying images.
+
+        Parameters:
+            root (tk.Tk): The Tkinter root window.
+            column (int): The column index where the canvas should be placed.
+            row (int): The row index where the canvas should be placed.
+            sticky (str): Defines how the canvas should expand or shrink if the widget exceeds its natural size.
+
+        Returns:
+            tk.Canvas: The created Canvas widget for displaying images.
+        """
+
+        canvas = tk.Canvas(root, width=640, height=480, borderwidth=1, relief="solid")
+        canvas.grid(column=column, row=row, sticky=sticky)
+        return canvas
+
+    def configure_button_hover(self, button):
+        """
+        Configures button hover behavior.
+
+        Binds the <Enter> and <Leave> events for a Tkinter button to corresponding methods.
+
+        Args:
+            button (tk.Button): The Tkinter Button widget to which hover behavior will be applied.
+        """
+        button.bind("<Enter>", lambda event: self.on_enter_button(event, button))
+        button.bind("<Leave>", lambda event: self.on_leave_button(event, button))
+
+    def on_enter_button(self, event, button):
+        """
+        Event handler for mouse entering a Tkinter button.
+
+        Changes the cursor to a hand icon and adjusts the button background when the mouse enters the button.
+
+        Args:
+            event: The event object containing information about the mouse event.
+            button (tk.Button): The Tkinter Button widget being interacted with.
+        """
+        button.config(cursor="hand2")
+        button.config(background="#dddddd")
+
+    def on_leave_button(self, event, button):
+        """
+        Event handler for mouse leaving a Tkinter button.
+
+        Resets the cursor to the default and restores the original button background when the mouse leaves the button.
+
+        Args:
+            event: The event object containing information about the mouse event.
+            button (tk.Button): The Tkinter Button widget being interacted with.
+        """
+        button.config(cursor="")
+        button.config(background="#f8f4f4")
 
 
     def start_process(self, root):
@@ -104,10 +140,6 @@ class MainWindow:
 
         src_image_path = self.webcam_window.capture_frame(sample_dir, sample_tag)
 
-        #self.save_image()
-
-        #self.webcam_window.capture_frame()
-
         result = self.impurity_detector.search_for_impurity(sample_dir, sample_tag, src_image_path)
 
         if (result):
@@ -115,5 +147,8 @@ class MainWindow:
         else:
             resultLabel.config(text="Amostra livre de impureza")
 
-        #self.save_image(result_img)
-
+    def on_closing(self):
+        # Perform any cleanup tasks and close the application
+        # For example, you might stop other threads or processes
+        self.webcam_window.stop_video()
+        self.root.destroy()

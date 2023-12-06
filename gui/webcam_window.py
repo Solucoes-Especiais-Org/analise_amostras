@@ -58,3 +58,5 @@ class WebcamWindow:
             cv2.imwrite(image_path, frame)
 
             return image_path
+
+

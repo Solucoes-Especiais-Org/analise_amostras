@@ -9,66 +9,86 @@ class ImpurityDetector:
 
     def __init__(self):
         self.file_management = FileManagement()
+
     def search_for_impurity(self, dir_path, tag, src_image_path):
 
-        img = cv2.imread(src_image_path)
-        img = img[::2, ::2]
+        original_img = cv2.imread(src_image_path)
+        original_img = original_img[::2, ::2]
 
-        imgWidth = img.shape[1]   # largura da imagem
-        imgHeight = img.shape[0]  # altura da imagem
+        cropped_img = self.crop_image(original_img)
 
-        img = self.crop_image(img)
-
-        # Cria uma máscara circular na imagem para delimitar a área da tampinha
-        mascara = np.zeros(img.shape[:2], dtype="uint8")
-        (cX, cY) = (img.shape[1] // 2, img.shape[0] // 2)
-        cv2.circle(mascara, (cX, cY), 100, 255, -1)
-        img = cv2.bitwise_and(img, img, mask=mascara)
+        circular_masked_img = self.create_circular_mask(cropped_img)
 
         # Convert from RGB to grayscale
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        rgb_img = cv2.cvtColor(circular_masked_img, cv2.COLOR_BGR2GRAY)
         # Aplly gaussian blur filter
-        suave = cv2.GaussianBlur(img, (7, 7), 0)
+        blur_img = cv2.GaussianBlur(rgb_img, (7, 7), 0)
         # Adaptative threshold
-        bin1 = cv2.adaptiveThreshold(suave, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 21, 5)
+        adaptative_threshold = cv2.adaptiveThreshold(blur_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 21, 5)
         # Aplly Canny border detection algorithim
-        canny1 = cv2.Canny(bin1, 20, 120)
+        canny_img = cv2.Canny(adaptative_threshold, 20, 120)
 
         # Saves result image to image file
-        self.save_result_image(img, dir_path, tag)
+        self.save_result_image(canny_img, dir_path, tag)
 
-        canny1 = cv2.dilate(canny1, None, iterations=1)
-        canny1 = cv2.erode(canny1, None, iterations=1)
+        canny_img = cv2.dilate(canny_img, None, iterations=1)
+        canny_img = cv2.erode(canny_img, None, iterations=1)
 
         # Grab contours using canny result image (canny1)
         # Use flag cv2.RETR_TREE to find inner contours instead of only the most external one, which is achieved using flag RETR_EXTERNAL
-        cnts = cv2.findContours(canny1.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        cnts = imutils.grab_contours(cnts)
+        contours = cv2.findContours(canny_img.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours = imutils.grab_contours(contours)
         # sort the contours from left-to-right and initialize the 'pixels per metric' calibration variable
-        (cnts, _) = contours.sort_contours(cnts)
+        (contours, _) = contours.sort_contours(contours)
 
-        storeArea = {}
+        areas = {}
         i = 0
         # loop over the contours individually
-        for c in cnts:
-            area = cv2.contourArea(c)
+        for contour in contours:
+            area = cv2.contourArea(contour)
 
             # area > 50 means there is light reflexion on the image
             # area < 0.0001 means the particle can be ignored
             if (area > 50) or (area < 0.0001):
                 continue
 
-            storeArea[i] = area
+            areas[i] = area
             i = i + 1
 
 
-        if len(storeArea) > 4:
+        if len(areas) > 4:
             return True
         else:
             return False
 
 
+    def create_circular_mask(self, img):
+        """
+        Create a circular mask on the image to delimit the area of the bottle cap.
+
+        Parameters:
+            img (numpy.ndarray): The original image.
+
+        Returns:
+            numpy.ndarray: The image with the circular mask applied.
+        """
+
+        mascara = np.zeros(img.shape[:2], dtype="uint8")
+        (cX, cY) = (img.shape[1] // 2, img.shape[0] // 2)
+        cv2.circle(mascara, (cX, cY), 100, 255, -1)
+        img = cv2.bitwise_and(img, img, mask=mascara)
+        return img
+
     def crop_image(self, img):
+        """
+        Crop the image, keeping only the area corresponding to the bottle cap.
+
+        Args:
+            img (numpy.ndarray): The original image.
+
+        Returns:
+            numpy.ndarray: The cropped image.
+        """
 
         ROWS = img.shape[0]
         COLS = img.shape[1]
