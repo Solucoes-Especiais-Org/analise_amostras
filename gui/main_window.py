@@ -20,8 +20,8 @@ class MainWindow:
     def __init__(self, root):
         self.root = root
         self.root.title("Análise de Amostras")
-        root.geometry('645x400')
-        root.minsize(1280, 640)
+        self.root.state('zoomed')
+        self.root.resizable(width=False, height=False)
 
         self.file_management = FileManagement();
         self.impurity_detector = ImpurityDetector();
