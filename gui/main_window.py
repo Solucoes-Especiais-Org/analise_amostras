@@ -1,32 +1,31 @@
-import tkinter as tk
 import os
-from datetime import datetime
-
 import cv2
-
+import tkinter as tk
+from datetime import datetime
 from utils.file_management import FileManagement
 from utils.impurity_detector import ImpurityDetector
 from utils.qr_code_reader import QRCodeReader
 from gui.webcam_window import WebcamWindow
+from PIL import Image, ImageTk
 
 # Caminho padrão do diretório de salvamento dos arquivos
 DEFAULT_SAVING_DIRECTORY = "/home/sitech/Documents/teste_predic/"
-
 sample_tag = "452156267"
-resource_path = "resources/samples/predic/318-0613.jpg"
+resource_path = "resources/samples/predic/test.jpg"
 
 # Example usage in another application
 class MainWindow:
+
     def __init__(self, root):
         self.root = root
         self.root.title("Análise de Amostras")
         self.root.state('zoomed')
         self.root.resizable(width=False, height=False)
-
-        self.file_management = FileManagement();
-        self.impurity_detector = ImpurityDetector();
+        self.file_management = FileManagement()
+        self.impurity_detector = ImpurityDetector()
         # self.qr_code_reader = QRCodeReader()
-
+        self.result_image_canvas = None
+        self.image_tk = None
         self.init_ui(self.root)
 
     def init_ui(self, root):
@@ -44,16 +43,6 @@ class MainWindow:
         Returns:
             None
         """
-
-        # Create a canvas for webcam stream
-        webcam_canvas = self.create_image_canvas(root, column=0, row=1, sticky="nsew")
-
-        # Create an instance of WebcamWindow and pass the canvas as a parameter
-        self.webcam_window = WebcamWindow(webcam_canvas, video_source=0)
-
-        # Create a canvas for the result image
-        result_image_canvas = self.create_image_canvas(root, column=2, row=1, sticky="nsew")
-
         # Create and configure START button
         start_button = tk.Button(root, text="START", width=10, command=self.start_process, background="#f8f4f4")
         start_button.grid(column=0, row=4)
@@ -73,6 +62,45 @@ class MainWindow:
         # Set up the window closing event
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+        # Create a canvas for webcam stream
+        webcam_canvas = self.create_image_canvas(root, column=0, row=1, sticky="nsew")
+        # Create an instance of WebcamWindow and pass the canvas as a parameter
+        self.webcam_window = WebcamWindow(webcam_canvas, video_source=0)
+
+        # Create a canvas for the result image
+        self.result_image_canvas = self.create_result_image_canvas(root)
+
+        # Define o tamanho desejado do canvas
+        canvas_width = 640
+        canvas_height = 480
+
+        # Carrega a imagem usando PIL
+        img_pil = Image.open(resource_path)
+
+        # Calcula o fator de zoom para preencher o canvas
+        zoom_factor = max(canvas_width / img_pil.width, canvas_height / img_pil.height)
+        # Redimensiona a imagem aplicando o fator de zoom
+        img_pil = img_pil.resize((int(img_pil.width * zoom_factor), int(img_pil.height * zoom_factor)))
+
+        # Converte a imagem para o formato compatível com Tkinter
+        self.image_tk = ImageTk.PhotoImage(img_pil)
+
+        # Exibe a imagem no Canvas result_image_canvas
+        self.result_image_canvas.config(width=canvas_width, height=canvas_height)
+        self.result_image_canvas.create_image(340, 0, anchor="n", image=self.image_tk)
+
+    def create_result_image_canvas(self, root):
+        """
+        Creates a Tkinter Canvas widget for displaying the result image.
+
+        Parameters:
+            root (tk.Tk): The Tkinter root window.
+
+        Returns:
+            tk.Canvas: The created Canvas widget for displaying the result image.
+        """
+        result_canvas = self.create_image_canvas(root, column=2, row=1, sticky="nsew")
+        return result_canvas
 
     def create_image_canvas(self, root, column, row, sticky):
         """
@@ -87,7 +115,6 @@ class MainWindow:
         Returns:
             tk.Canvas: The created Canvas widget for displaying images.
         """
-
         canvas = tk.Canvas(root, width=640, height=480, borderwidth=1, relief="solid")
         canvas.grid(column=column, row=row, sticky=sticky)
         return canvas
@@ -130,19 +157,14 @@ class MainWindow:
         button.config(cursor="")
         button.config(background="#f8f4f4")
 
-
     def start_process(self, root):
         # Resultado da análise ("Amostra Contaminada" / "Amostra Livre de Impureza")
         resultLabel = tk.Label(root, text='', font=("Helvetica", 16))
         resultLabel.grid(column=0, row=3, columnspan=3)
-
         sample_dir = self.file_management.make_sample_dir(sample_tag)
-
         src_image_path = self.webcam_window.capture_frame(sample_dir, sample_tag)
-
         result = self.impurity_detector.search_for_impurity(sample_dir, sample_tag, src_image_path)
-
-        if (result):
+        if result:
             resultLabel.config(text="Amostra contaminada")
         else:
             resultLabel.config(text="Amostra livre de impureza")
